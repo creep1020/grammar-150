@@ -1,0 +1,10 @@
+{
+  "version": "v92",
+  "changes": "correct grammar profile link labels only",
+  "original_character_png_identical": 175,
+  "shared_profile_app_id": "grammar150",
+  "grammar_collection": "grammar150Users",
+  "shared_collection": "ilbbangShared",
+  "javascript_syntax": "passed",
+  "live_firebase_browser_apk": "not tested"
+}
