@@ -1626,13 +1626,15 @@ async function loadParentNotifySettings() {
   const ref = notifySettingsRef();
   try {
     const snap = await getDoc(ref);
-    parentNotifySettings = {enabled:false,time:'19:00',sound:true,lockscreen:'full',...(snap.exists()?snap.data():{})};
+    const familyPinSnap = await getDoc(doc(db,'ilbbangUsers',currentUid,'privateSettings','notifications'));
+    const familyPin = familyPinSnap.exists()?familyPinSnap.data().pinHash:null;
+    parentNotifySettings = {enabled:false,time:'19:00',sound:true,lockscreen:'full',...(snap.exists()?snap.data():{}),...(familyPin?{pinHash:familyPin}:{})};
     showParentPinState();
     if (stopNotifySettingsListener) stopNotifySettingsListener();
     stopNotifySettingsListener = onSnapshot(ref, snapNow => {
       if (!snapNow.exists()) return;
       const incoming = snapNow.data();
-      parentNotifySettings = {enabled:false,time:'19:00',sound:true,lockscreen:'full',...incoming};
+      parentNotifySettings = {enabled:false,time:'19:00',sound:true,lockscreen:'full',...incoming,...(familyPin?{pinHash:familyPin}:{})};
       showParentPinState();
     }, err => $login('notifyStatus').textContent = '설정 동기화 오류: ' + err.message);
   } catch (err) {
@@ -1870,6 +1872,36 @@ async function loadAndMergeCloud(user) {
   status('☁️ 클라우드 기록을 확인하고 있어요…');
   const ref = doc(db, 'grammar150Users', user.uid);
   try {
+    const familySnap = await getDoc(doc(db, 'ilbbangUsers', user.uid));
+    const family = familySnap.exists() ? familySnap.data() : {};
+    const commonRef = doc(db, 'ilbbangShared', user.uid);
+    const commonSnap = await getDoc(commonRef);
+    const common = commonSnap.exists() ? commonSnap.data() : {};
+    const familyProfiles = Array.isArray(family.profiles) ? family.profiles.filter(p=>p.id && p.name).slice(0,PROFILE_LIMIT).map(p=>({id:String(p.id),name:String(p.name)})) : [];
+    if (familyProfiles.length) {
+      await runTransaction(db, async tx => {
+        const gs = await tx.get(ref);
+        const cs = await tx.get(commonRef);
+        const old = gs.exists()?gs.data():{};
+        const shared = cs.exists()?cs.data():{};
+        const links = {...(shared.appLinks||{})};
+        const data = {...(old.profileData||{})};
+        const saved = localStorage.getItem(ACTIVE_PROFILE_KEY);
+        const next = familyProfiles.some(p=>p.id===saved)?saved:familyProfiles[0].id;
+        for (const p of familyProfiles) {
+          const target = links['book1-sequential:'+p.id];
+          if (target && shared.profiles?.[target] && !links['grammar150:'+p.id]) links['grammar150:'+p.id]=target;
+        }
+        tx.set(ref,{profiles:familyProfiles,activeProfileId:next,profileData:data,updatedAt:serverTimestamp()},{merge:true});
+        if(cs.exists()) tx.set(commonRef,{appLinks:links},{merge:true});
+      });
+      // Never merge an unidentified default profile into a child's records.
+      if (!familyProfiles.some(p=>p.id===localStorage.getItem(ACTIVE_PROFILE_KEY))) {
+        localStorage.setItem('grammar150UnassignedBackup',JSON.stringify(readLocalSnapshot()));
+        applySnapshot({});
+        localStorage.setItem(ACTIVE_PROFILE_KEY, familyProfiles[0].id);
+      }
+    }
     const snap = await getDoc(ref);
     const localData = readLocalSnapshot();
     if (!snap.exists()) {
