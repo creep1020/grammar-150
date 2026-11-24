@@ -72,6 +72,9 @@ button{cursor:pointer}button:disabled{opacity:.4;cursor:default}.primary{backgro
 .keke-stage-dots{display:flex;justify-content:center;gap:8px;margin-top:9px;color:#b8a8d3;font-size:13px}.keke-stage-dots .active{color:#e78bb9;text-shadow:0 1px 3px #f5c4dc}
 .keke-preview-tools{margin-top:10px;padding:10px;border:1px dashed #bba5df;border-radius:12px;background:#fbf8ff}.keke-preview-tools .preview-buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}.keke-preview-tools button{padding:8px 4px;font-size:12px}.keke-preview-tools button.active{background:#8d6bd6;color:#fff;border-color:#8d6bd6}
 @keyframes kekeFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+
+#sentenceList > li.grammar-intro { grid-template-columns: minmax(0, 1fr); }
+#sentenceList > li.grammar-intro > .item-main { display:block; width:100%; overflow-wrap:break-word; }
 </style></head>
  <script>
 if ('serviceWorker' in navigator) {
@@ -849,7 +852,7 @@ function render(){
  const reviewItems=DATA.flatMap(l=>l.checks.map((q,i)=>({l,i}))).filter(({l,i})=>due(l.day+'-'+i));
  $('itemCount').textContent=listMode==='all'?'예문 3개 · 문제 2개':`오답 ${reviewItems.length}개`;
  $('emptyReview').style.display=listMode==='review'&&!reviewItems.length?'block':'none';
- $('sentenceList').innerHTML=listMode==='review'?reviewItems.map(({l,i})=>quiz(l,i)).join(''):`<li><span class="item-main"><b>${escapeHtml(data.title)}</b><p style="line-height:1.8">${escapeHtml(data.intro)}</p></span></li>`+data.items.map(x=>`<li><span class="num">${x.no}</span><span class="item-main"><b>${escapeHtml(x.en)}</b><div>${escapeHtml(x.ko)}</div><button data-listen="${x.no}">🔊 듣기</button></span></li>`).join('')+data.checks.map((q,i)=>quiz(data,i)).join('');
+ $('sentenceList').innerHTML=listMode==='review'?reviewItems.map(({l,i})=>quiz(l,i)).join(''):`<li class="grammar-intro"><span class="item-main"><b>${escapeHtml(data.title)}</b><p style="line-height:1.8">${escapeHtml(data.intro)}</p></span></li>`+data.items.map(x=>`<li><span class="num">${x.no}</span><span class="item-main"><b>${escapeHtml(x.en)}</b><div>${escapeHtml(x.ko)}</div><button data-listen="${x.no}">🔊 듣기</button></span></li>`).join('')+data.checks.map((q,i)=>quiz(data,i)).join('');
  $('sentenceList').querySelectorAll('[data-listen]').forEach(btn=>btn.onclick=()=>speakEnglish(DATA.flatMap(d=>d.items).find(x=>x.no===Number(btn.dataset.listen)).en));
  $('sentenceList').querySelectorAll('[data-quiz]').forEach(btn=>btn.onclick=()=>{const k=btn.dataset.quiz,[d,i]=k.split('-').map(Number);const correct=Number(btn.dataset.option)===DATA[d-1].checks[i].answer;const result=grammarQuizTransition(wrong[k],correct,iso(today),new Date().toISOString());passed[k]=correct;wrong[k]=result;writeMap('grammar150Checked',passed);writeMap('grammar150Review',wrong);render();});
  $('reviewGatePanel').style.display='none'; $('studyViewToggle').style.display='none';

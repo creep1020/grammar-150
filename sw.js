@@ -33,7 +33,7 @@ messaging.onBackgroundMessage(payload => {
 });
 
 // v10: 최신 HTML 배포본 우선 적용
-const CACHE = 'grammar150-v10-fcm';
+const CACHE = 'grammar150-v11-layout-fcm';
 
 const FILES = [
   './',
