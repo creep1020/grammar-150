@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "문법 150강",
-  "short_name": "문법 150",
+  "name": "문법연습",
+  "short_name": "문법연습",
   "description": "하루 한 강씩 문법 150강 학습",
   "lang": "ko-KR",
   "start_url": "./",

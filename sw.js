@@ -33,7 +33,7 @@ messaging.onBackgroundMessage(payload => {
 });
 
 // v10: 최신 HTML 배포본 우선 적용
-const CACHE = 'grammar150-v13-character-path';
+const CACHE = 'grammar150-v14-name-icon';
 
 const FILES = [
   './',
