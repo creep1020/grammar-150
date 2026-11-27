@@ -550,25 +550,17 @@ async function finishSpeakingAttempt(){
  if(no===null||!item)return;
  finalizingRecording=true;
  const percent=speakingMatch(item.en,spoken);
- const passes=!!spoken&&percent>=50;
- const saved=speakingPasses(),k=speakingKey(no),attemptMap=speakingAttempts();
- let attemptCount=Number(attemptMap[k]||0);
- if(passes){
-  saved[k]={passed:true,percent,transcript:spoken,at:new Date().toISOString()};
-  delete attemptMap[k];attemptCount=0;
- }else{
-  delete saved[k];attemptCount=Math.min(3,attemptCount+1);attemptMap[k]=attemptCount;
- }
- writeMap(SPEAKING_PASS_KEY,saved);writeMap(SPEAKING_ATTEMPT_KEY,attemptMap);
- if(!passes&&attemptCount>=3)autoAddFailedSpeakingToReview(no);
- const transcript=spoken?`<br><b>인식 결과:</b> “${escapeHtml(spoken)}”`:`<br>인식된 음성이 없어요.${activeRecognitionError?` (오류: ${escapeHtml(activeRecognitionError)})`:''}`;
- let result=passes
-  ?`<b>✅ 통과 · 일치율 ${percent}%</b>${transcript}<br>이 문장은 말하기 학습을 통과했어요.`
-  :attemptCount>=3
-   ?`<b>📚 3회 실패 · 일치율 ${percent}%</b>${transcript}<br>복습 목록에 자동 등록했어요. 오늘 복습에서 다시 말해 주세요.`
-   :`<b>🔁 다시 녹음해 주세요 · 일치율 ${percent}% (${attemptCount}/3회)</b>${transcript}<br>원문 단어의 50% 이상을 순서대로 말해야 통과해요.`;
  const mime=activeRecorder?.mimeType||activeChunks[0]?.type||'audio/webm';
  const blob=new Blob(activeChunks,{type:mime});
+ const completed=blob.size>0||!!spoken;
+ const saved=speakingPasses(),k=speakingKey(no),attemptMap=speakingAttempts();
+ if(completed){
+  saved[k]={passed:true,percent,transcript:spoken,at:new Date().toISOString()};
+  delete attemptMap[k];
+  writeMap(SPEAKING_PASS_KEY,saved);writeMap(SPEAKING_ATTEMPT_KEY,attemptMap);
+ }
+ const transcript=spoken?`<br><b>인식 결과:</b> “${escapeHtml(spoken)}”`:'';
+ let result=completed?`<b>✅ 녹음 완료 · 일치율 ${percent}%</b>${transcript}<br>다음 문장으로 넘어가도 좋아요.`:'<b>녹음 데이터가 없어요. 마이크를 확인해 주세요.</b>';
  recordingResults[no]=recordingResults[no]||{};
  if(recordingResults[no].audioUrl)URL.revokeObjectURL(recordingResults[no].audioUrl);
  if(blob.size){
@@ -734,7 +726,7 @@ window.onIlbbangNativeVoiceResult=async function(result){
 
 async function startRecording(no){
  const attemptKey=speakingKey(no),attemptCount=Number(speakingAttempts()[attemptKey]||0);
- if(attemptCount>=3&&!speakingPasses()[attemptKey]?.passed){alert('이 문장은 3회 도전을 마쳤어요. 오늘 복습 목록에서 다시 연습해 주세요.');return;}
+
  if(window.IlbbangAndroid&&typeof window.IlbbangAndroid.startRecording==='function'){
   if(activeNo!==null||nativeVoicePending){alert('이전 문장의 음성 확인이 끝나지 않았어요. 잠시만 기다려 주세요.');return;}
   const item=DATA.flatMap(d=>d.items).find(x=>x.no===no);if(!item)return;
@@ -852,7 +844,7 @@ function render(){
  const reviewItems=DATA.flatMap(l=>l.checks.map((q,i)=>({l,i}))).filter(({l,i})=>due(l.day+'-'+i));
  $('itemCount').textContent=listMode==='all'?'예문 3개 · 문제 2개':`오답 ${reviewItems.length}개`;
  $('emptyReview').style.display=listMode==='review'&&!reviewItems.length?'block':'none';
- $('sentenceList').innerHTML=listMode==='review'?reviewItems.map(({l,i})=>quiz(l,i)).join(''):`<li class="grammar-intro"><span class="item-main"><b>${escapeHtml(data.title)}</b><p style="line-height:1.8">${escapeHtml(data.intro)}</p></span></li>`+data.items.map(x=>`<li><span class="num">${x.no}</span><span class="item-main"><b>${escapeHtml(x.en)}</b><div>${escapeHtml(x.ko)}</div><button data-listen="${x.no}">🔊 듣기</button></span></li>`).join('')+data.checks.map((q,i)=>quiz(data,i)).join('');
+ $('sentenceList').innerHTML=listMode==='review'?reviewItems.map(({l,i})=>quiz(l,i)).join(''):`<li class="grammar-intro"><span class="item-main"><b>${escapeHtml(data.title)}</b><p style="line-height:1.8">${escapeHtml(data.intro)}</p></span></li>`+data.items.map(x=>`<li><span class="num">${x.no}</span><span class="item-main"><b>${escapeHtml(x.en)}</b><div>${escapeHtml(x.ko)}</div><div class="item-tools"><button data-listen="${x.no}">🔊 듣기</button><button data-record="${x.no}" ${activeNo!==null&&activeNo!==x.no?'disabled':''}>${activeNo===x.no?'⏹ 녹음 종료':speakingPasses()[speakingKey(x.no)]?.passed?'🎙 다시 녹음':'🎙 녹음'}</button></div><div id="record-${x.no}" class="record-result ${recordingResults[x.no]?.html?'show':''}">${recordingResults[x.no]?.html||''}${recordingResults[x.no]?.audioUrl?`<audio controls class="record-audio" src="${recordingResults[x.no].audioUrl}"></audio>`:''}</div></span></li>`).join('')+data.checks.map((q,i)=>quiz(data,i)).join('');
  $('sentenceList').querySelectorAll('[data-listen]').forEach(btn=>btn.onclick=()=>speakEnglish(DATA.flatMap(d=>d.items).find(x=>x.no===Number(btn.dataset.listen)).en));
  $('sentenceList').querySelectorAll('[data-quiz]').forEach(btn=>btn.onclick=()=>{const k=btn.dataset.quiz,[d,i]=k.split('-').map(Number);const correct=Number(btn.dataset.option)===DATA[d-1].checks[i].answer;const result=grammarQuizTransition(wrong[k],correct,iso(today),new Date().toISOString());passed[k]=correct;wrong[k]=result;writeMap('grammar150Checked',passed);writeMap('grammar150Review',wrong);render();});
  $('reviewGatePanel').style.display='none'; $('studyViewToggle').style.display='none';
