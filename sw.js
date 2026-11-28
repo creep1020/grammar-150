@@ -33,7 +33,7 @@ messaging.onBackgroundMessage(payload => {
 });
 
 // v10: 최신 HTML 배포본 우선 적용
-const CACHE = 'grammar150-v15-record-once';
+const CACHE = 'grammar150-v101';
 
 const FILES = [
   './',
